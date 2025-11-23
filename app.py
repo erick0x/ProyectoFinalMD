@@ -8,96 +8,26 @@ import base64
 import os
 
 # ---------------------------------------------------------
-# 1. CONEXIÓN A MONGO ATLAS - OPTIMIZADA
+# 1. CONEXIÓN A MONGO ATLAS
 # ---------------------------------------------------------
-try:
-    client = MongoClient(
-        "mongodb+srv://erick:Xrer90lyyV80dN9a@cluster0.yux1ode.mongodb.net/",
-        tls=True,
-        tlsAllowInvalidCertificates=True,
-        retryWrites=True,
-        w='majority',
-        serverSelectionTimeoutMS=30000,
-        connectTimeoutMS=30000
-    )
-    
-    # Test connection
-    client.admin.command('ping')
-    db = client["ProyectoMD"]
-    coleccion_indicadores = db["indicadores"]
-    coleccion_resenas = db["reseñas"]
-    
-    print("✅ Conexión exitosa a MongoDB")
-    
-    # Cargar datos de indicadores (estos son pocos)
-    data_indicadores = list(coleccion_indicadores.find({}, {"_id": 0}))
-    df_indicadores = pd.DataFrame(data_indicadores)
-    
-    # ⚡ CARGAR SOLO DATOS AGREGADOS - NO 200,000 RESEÑAS ⚡
-    print("📊 Cargando datos agregados para gráficas...")
-    
-    # Para gráfica de reseñas por pueblo
-    pipeline_pueblos = [
-        {"$group": {"_id": "$Town", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}},
-        {"$limit": 10}
-    ]
-    pueblo_counts = list(coleccion_resenas.aggregate(pipeline_pueblos))
-    
-    # Para gráfica de reseñas por región
-    pipeline_regiones = [
-        {"$group": {"_id": "$Region", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}},
-        {"$limit": 8}
-    ]
-    region_counts = list(coleccion_resenas.aggregate(pipeline_regiones))
-    
-    # Para gráfica de tipos
-    pipeline_tipos = [
-        {"$group": {"_id": "$Type", "count": {"$sum": 1}}}
-    ]
-    tipo_counts = list(coleccion_resenas.aggregate(pipeline_tipos))
-    
-    print(f"✅ Datos cargados: {len(pueblo_counts)} pueblos, {len(region_counts)} regiones")
-    
-except Exception as e:
-    print(f"❌ Error conectando a MongoDB: {e}")
-    print("🔄 Usando datos de prueba...")
-    
-    # Datos de ejemplo como fallback
-    df_indicadores = pd.DataFrame({
-        'Town': ['Tulum', 'Sayulita', 'Valladolid', 'San Cristobal', 'Taxco', 'Teotihuacan', 'Palenque'],
-        'Satisfaccion_Hotelera': [4.5, 4.2, 4.7, 4.3, 4.1, 4.6, 4.4],
-        'Satisfaccion_Restaurantes': [4.3, 4.1, 4.6, 4.2, 4.0, 4.5, 4.3],
-        'Percepcion_Seguridad': [4.0, 3.8, 4.5, 4.2, 3.9, 4.3, 4.1],
-        'Percepcion_Clima': [4.8, 4.7, 4.9, 4.6, 4.5, 4.7, 4.8],
-        'Satisfaccion_General_AtractivoTuristico': [4.6, 4.4, 4.8, 4.5, 4.3, 4.7, 4.5]
-    })
-    
-    pueblo_counts = [
-        {'_id': 'Tulum', 'count': 1500},
-        {'_id': 'Sayulita', 'count': 1200},
-        {'_id': 'Valladolid', 'count': 900},
-        {'_id': 'San Cristobal', 'count': 800},
-        {'_id': 'Taxco', 'count': 700}
-    ]
-    
-    region_counts = [
-        {'_id': 'QuintanaRoo', 'count': 3000},
-        {'_id': 'Jalisco', 'count': 2500},
-        {'_id': 'Chiapas', 'count': 1800},
-        {'_id': 'Yucatan', 'count': 1500},
-        {'_id': 'Guerrero', 'count': 1200}
-    ]
-    
-    tipo_counts = [
-        {'_id': 'Hotel', 'count': 80000},
-        {'_id': 'Restaurant', 'count': 70000},
-        {'_id': 'Attractive', 'count': 50000}
-    ]
+client = MongoClient("mongodb+srv://erick:Xrer90lyyV80dN9a@cluster0.yux1ode.mongodb.net/")
+db = client["ProyectoMD"]
+coleccion_indicadores = db["indicadores"]
+coleccion_resenas = db["reseñas"]
+
+# Cargar datos de indicadores
+data_indicadores = list(coleccion_indicadores.find({}, {"_id": 0}))
+df_indicadores = pd.DataFrame(data_indicadores)
+
+# Cargar TODAS las reseñas
+data_resenas = list(coleccion_resenas.find())
+df_resenas = pd.DataFrame(data_resenas)
 
 pueblos = sorted(df_indicadores["Town"].unique())
 primer_pueblo = pueblos[0]
+
+print("✅ Conexión exitosa a MongoDB")
+print(f"✅ {len(df_resenas)} reseñas cargadas")
 
 # ---------------------------------------------------------
 # 2. CARGAR LOGOS DESDE ASSETS
@@ -109,13 +39,13 @@ def encode_img(path):
     except:
         return None
 
-# Rutas para Render
+# Rutas para Render (usando rutas relativas)
 turismo_src = encode_img("assets/turismo.png")
 pueblos_src = encode_img("assets/pueblos.png")
 estrellas_src = encode_img("assets/estrellas.png")
 
 # ---------------------------------------------------------
-# 3. URL DE IMÁGENES
+# 3. URL DE IMÁGENES (mantener igual)
 # ---------------------------------------------------------
 url_imgs = {
     "Ajijic":"https://mexicorutamagica.mx/wp-content/uploads/2023/11/costa-ajijic-pueblo-magico-de-jalisco.jpg",
@@ -161,7 +91,7 @@ url_imgs = {
 }
 
 # ---------------------------------------------------------
-# 4. COORDENADAS
+# 4. COORDENADAS (mantener igual)
 # ---------------------------------------------------------
 coords = {
     "Ajijic": (20.2986, -103.2565),
@@ -276,22 +206,16 @@ def crear_grafica_restaurantes():
     return fig
 
 def crear_grafica_resenas_por_pueblo():
-    """Gráfica 4: Número de reseñas por pueblo (usando datos agregados)"""
-    if pueblo_counts:
-        pueblos = [item['_id'] for item in pueblo_counts]
-        counts = [item['count'] for item in pueblo_counts]
-    else:
-        # Datos de ejemplo si no hay conexión
-        pueblos = ['Tulum', 'Sayulita', 'Valladolid', 'San Cristobal', 'Taxco']
-        counts = [1500, 1200, 900, 800, 700]
+    """Gráfica 4: Número de reseñas por pueblo"""
+    pueblo_counts = df_resenas['Town'].value_counts().head(10)
     
     fig = px.bar(
-        x=counts,
-        y=pueblos,
+        x=pueblo_counts.values,
+        y=pueblo_counts.index,
         orientation='h',
         title="Top 10 Pueblos con Más Reseñas",
         labels={'x': 'Número de Reseñas', 'y': 'Pueblo Mágico'},
-        color_discrete_sequence=['#8e44ad'] * len(pueblos)
+        color_discrete_sequence=['#8e44ad'] * len(pueblo_counts)
     )
     fig.update_layout(
         plot_bgcolor='white',
@@ -303,21 +227,15 @@ def crear_grafica_resenas_por_pueblo():
     return fig
 
 def crear_grafica_resenas_por_region():
-    """Gráfica 5: Número de reseñas por región (usando datos agregados)"""
-    if region_counts:
-        regiones = [item['_id'] for item in region_counts]
-        counts = [item['count'] for item in region_counts]
-    else:
-        # Datos de ejemplo
-        regiones = ['QuintanaRoo', 'Jalisco', 'Chiapas', 'Yucatan']
-        counts = [3000, 2500, 1800, 1500]
+    """Gráfica 5: Número de reseñas por región"""
+    region_counts = df_resenas['Region'].value_counts().head(8)
     
     fig = px.bar(
-        x=regiones,
-        y=counts,
+        x=region_counts.index,
+        y=region_counts.values,
         title="Top 8 Regiones con Más Reseñas",
         labels={'x': 'Región', 'y': 'Número de Reseñas'},
-        color_discrete_sequence=['#f39c12'] * len(regiones)
+        color_discrete_sequence=['#f39c12'] * len(region_counts)
     )
     fig.update_layout(
         plot_bgcolor='white',
@@ -329,17 +247,12 @@ def crear_grafica_resenas_por_region():
     return fig
 
 def crear_grafica_tipos_establecimiento():
-    """Gráfica 6: Distribución por tipo (usando datos agregados)"""
-    if tipo_counts:
-        tipos = [item['_id'] for item in tipo_counts]
-        counts = [item['count'] for item in tipo_counts]
-    else:
-        tipos = ['Hotel', 'Restaurant', 'Attractive']
-        counts = [80000, 70000, 50000]
+    """Gráfica 6: Distribución por tipo de establecimiento"""
+    tipo_counts = df_resenas['Type'].value_counts()
     
     fig = px.pie(
-        values=counts,
-        names=tipos,
+        values=tipo_counts.values,
+        names=tipo_counts.index,
         title="Distribución por Tipo de Establecimiento",
         hole=0.4,
         color_discrete_sequence=['#6D48E7', '#E67E22', '#27ae60']
@@ -357,25 +270,24 @@ def crear_grafica_tipos_establecimiento():
 # 6. FUNCIÓN PARA OBTENER RESEÑAS DEL PUEBLO SELECCIONADO
 # ---------------------------------------------------------
 def obtener_resenas_pueblo(pueblo):
-    """Obtiene las primeras 10 reseñas del pueblo seleccionado (bajo demanda)"""
-    try:
-        reseñas_pueblo = list(coleccion_resenas.find(
-            {'Town': pueblo}, 
-            {'_id': 0, 'Title': 1, 'Review': 1, 'Polarity': 1, 'Type': 1, 'sentimiento_5': 1}
-        ).limit(10))
+    """Obtiene las primeras 10 reseñas del pueblo seleccionado"""
+    reseñas_pueblo = df_resenas[df_resenas['Town'] == pueblo].head(10)
+    
+    # Seleccionar y renombrar columnas específicas
+    columnas_mostrar = ['Title', 'Review', 'Polarity', 'Type', 'sentimiento_5']
+    nombres_columnas = ['Título', 'Reseña', 'Calificación', 'Tipo', 'Score Sentimiento']
+    
+    if not reseñas_pueblo.empty:
+        reseñas_filtradas = reseñas_pueblo[columnas_mostrar].copy()
+        reseñas_filtradas.columns = nombres_columnas
         
-        if reseñas_pueblo:
-            df = pd.DataFrame(reseñas_pueblo)
-            # Renombrar columnas
-            df.columns = ['Título', 'Reseña', 'Calificación', 'Tipo', 'Score Sentimiento']
-            df['Score Sentimiento'] = df['Score Sentimiento'].round(4)
-            df['Calificación'] = df['Calificación'].astype(int)
-            return df
-        else:
-            return pd.DataFrame(columns=['Título', 'Reseña', 'Calificación', 'Tipo', 'Score Sentimiento'])
-    except Exception as e:
-        print(f"Error obteniendo reseñas: {e}")
-        return pd.DataFrame(columns=['Título', 'Reseña', 'Calificación', 'Tipo', 'Score Sentimiento'])
+        # Formatear columnas
+        reseñas_filtradas['Score Sentimiento'] = reseñas_filtradas['Score Sentimiento'].round(4)
+        reseñas_filtradas['Calificación'] = reseñas_filtradas['Calificación'].astype(int)
+        
+        return reseñas_filtradas
+    else:
+        return pd.DataFrame(columns=nombres_columnas)
 
 # ---------------------------------------------------------
 # 7. INDICADORES

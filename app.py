@@ -10,10 +10,32 @@ import os
 # ---------------------------------------------------------
 # 1. CONEXIÓN A MONGO ATLAS
 # ---------------------------------------------------------
-client = MongoClient("mongodb+srv://erick:Xrer90lyyV80dN9a@cluster0.yux1ode.mongodb.net/")
-db = client["ProyectoMD"]
-coleccion_indicadores = db["indicadores"]
-coleccion_resenas = db["reseñas"]
+# ---------------------------------------------------------
+# 1. CONEXIÓN A MONGO ATLAS
+# ---------------------------------------------------------
+try:
+    client = MongoClient(
+        "mongodb+srv://erick:Xrer90lyyV80dN9a@cluster0.yux1ode.mongodb.net/",
+        tls=True,
+        tlsAllowInvalidCertificates=True,
+        serverSelectionTimeoutMS=10000,
+        connectTimeoutMS=10000,
+        retryWrites=True,
+        w='majority'
+    )
+    
+    # Test connection
+    client.admin.command('ping')
+    db = client["ProyectoMD"]
+    coleccion_indicadores = db["indicadores"]
+    coleccion_resenas = db["reseñas"]
+    
+    print("✅ Conexión exitosa a MongoDB")
+    
+except Exception as e:
+    print(f"❌ Error conectando a MongoDB: {e}")
+    # Salir o manejar el error apropiadamente
+    raise e
 
 # Cargar datos de indicadores
 data_indicadores = list(coleccion_indicadores.find({}, {"_id": 0}))

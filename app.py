@@ -313,7 +313,7 @@ def mapa_mexico(pueblo_actual):
 
     df_map["selected"] = df_map["pueblo"] == pueblo_actual
 
-    fig = px.scatter_map(
+    fig = px.scatter_mapbox(
         df_map,
         lat="lat",
         lon="lon",

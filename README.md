@@ -9,6 +9,10 @@ Dashboard interactivo para análisis de indicadores y reseñas de Pueblos Mágic
 - Gráficas interactivas y mapa de ubicación
 - Tabla de reseñas por pueblo seleccionado
 
+## Carpeta Data
+
+Contiene todos los notebooks y datos en formato csv
+
 ## Tecnologías
 
 - Python

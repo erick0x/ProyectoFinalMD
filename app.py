@@ -10,7 +10,7 @@ import os
 # ---------------------------------------------------------
 # 1. CONEXIÓN A MONGO ATLAS
 # ---------------------------------------------------------
-client = MongoClient("mongodb+srv://erick:kikotrukini1@cluster0.aaonird.mongodb.net/")
+client = MongoClient("mongodb+srv://erick:kikini1@cluster0.yux1ode.mongodb.net/")
 db = client["ProyectoMD"]
 coleccion_indicadores = db["indicadores"]
 coleccion_resenas = db["reseñas"]
